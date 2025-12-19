@@ -25,8 +25,9 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 sh '''
-                docker build -t frontend Application-Code/frontend
-                docker build -t backend  Application-Code/backend
+                echo "🔨 Building Docker images..."
+                docker build -t frontend frontend
+                docker build -t backend  backend
                 '''
             }
         }
@@ -36,6 +37,7 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: 'aws-jenkins']]) {
                     sh '''
+                    echo "🔐 Logging in to AWS ECR..."
                     aws ecr get-login-password --region $AWS_REGION |
                     docker login --username AWS --password-stdin $ECR_REGISTRY
                     '''
@@ -46,6 +48,7 @@ pipeline {
         stage('Tag & Push Images') {
             steps {
                 sh '''
+                echo "🚀 Pushing images to ECR..."
                 docker tag frontend:latest $ECR_REGISTRY/frontend:$IMAGE_TAG
                 docker tag backend:latest  $ECR_REGISTRY/backend:$IMAGE_TAG
 
@@ -55,9 +58,10 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS') {
+        stage('Deploy to EKS (Rolling Update)') {
             steps {
                 sh '''
+                echo "♻️ Restarting deployments in EKS..."
                 kubectl rollout restart deployment/frontend -n $NAMESPACE
                 kubectl rollout restart deployment/backend  -n $NAMESPACE
 
