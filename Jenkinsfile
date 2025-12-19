@@ -11,24 +11,20 @@ pipeline {
 
     stages {
 
-        stage('Clean Workspace') {
+        stage('Verify Workspace') {
             steps {
-                deleteDir()
-            }
-        }
-
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/RitikAg2710/mern-app-ci-cd.git',
-                    credentialsId: 'git-jen'
+                sh '''
+                echo "📂 Current directory:"
+                pwd
+                echo "📁 Listing files:"
+                ls -l
+                '''
             }
         }
 
         stage('Build Docker Images') {
             steps {
                 sh '''
-                echo "🔨 Building Docker images..."
                 docker build -t frontend Application-Code/frontend
                 docker build -t backend  Application-Code/backend
                 '''
@@ -40,7 +36,6 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
                                   credentialsId: 'aws-jenkins']]) {
                     sh '''
-                    echo "🔐 Logging in to AWS ECR..."
                     aws ecr get-login-password --region $AWS_REGION |
                     docker login --username AWS --password-stdin $ECR_REGISTRY
                     '''
@@ -48,10 +43,9 @@ pipeline {
             }
         }
 
-        stage('Tag & Push Images to ECR') {
+        stage('Tag & Push Images') {
             steps {
                 sh '''
-                echo "🚀 Pushing images to ECR..."
                 docker tag frontend:latest $ECR_REGISTRY/frontend:$IMAGE_TAG
                 docker tag backend:latest  $ECR_REGISTRY/backend:$IMAGE_TAG
 
@@ -61,10 +55,9 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS (Rolling Update)') {
+        stage('Deploy to EKS') {
             steps {
                 sh '''
-                echo "♻️ Restarting Kubernetes deployments..."
                 kubectl rollout restart deployment/frontend -n $NAMESPACE
                 kubectl rollout restart deployment/backend  -n $NAMESPACE
 
@@ -72,15 +65,6 @@ pipeline {
                 kubectl rollout status deployment/backend  -n $NAMESPACE
                 '''
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Jenkins CI/CD pipeline completed successfully!"
-        }
-        failure {
-            echo "❌ Jenkins pipeline failed. Check console output."
         }
     }
 }
