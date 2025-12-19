@@ -21,7 +21,7 @@ pipeline {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/RitikAg2710/mern-app-ci-cd.git',
-                    credentialsId: 'git-jen-id'
+                    credentialsId: 'git-jen'
             }
         }
 
