@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION   = "ap-south-1"
-        ACCOUNT_ID   = "940925916864"
+        ACCOUNT_ID   = "439289764452"
         ECR_REGISTRY = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
         IMAGE_TAG    = "latest"
         NAMESPACE    = "mern-app"
