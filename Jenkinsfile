@@ -2,10 +2,11 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = "ap-south-1"
-        ACCOUNT_ID = "940925916864"
+        AWS_REGION   = "ap-south-1"
+        ACCOUNT_ID   = "940925916864"
         ECR_REGISTRY = "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-        IMAGE_TAG = "latest"
+        IMAGE_TAG    = "latest"
+        NAMESPACE    = "mern-app"
     }
 
     stages {
@@ -19,16 +20,17 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/SAEEMSAKADIRI/mern-app-ci-cd.git',
-                    credentialsId: 'github-creds'
+                    url: 'https://github.com/RitikAg2710/mern-app-ci-cd.git',
+                    credentialsId: 'git-jen-id'
             }
         }
 
         stage('Build Docker Images') {
             steps {
                 sh '''
-                docker build -t frontend app/Application-Code/frontend
-                docker build -t backend  app/Application-Code/backend
+                echo "🔨 Building Docker images..."
+                docker build -t frontend Application-Code/frontend
+                docker build -t backend  Application-Code/backend
                 '''
             }
         }
@@ -36,8 +38,9 @@ pipeline {
         stage('Login to AWS ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-                                  credentialsId: 'aws-creds']]) {
+                                  credentialsId: 'aws-jenkins']]) {
                     sh '''
+                    echo "🔐 Logging in to AWS ECR..."
                     aws ecr get-login-password --region $AWS_REGION |
                     docker login --username AWS --password-stdin $ECR_REGISTRY
                     '''
@@ -45,9 +48,10 @@ pipeline {
             }
         }
 
-        stage('Tag & Push Images') {
+        stage('Tag & Push Images to ECR') {
             steps {
                 sh '''
+                echo "🚀 Pushing images to ECR..."
                 docker tag frontend:latest $ECR_REGISTRY/frontend:$IMAGE_TAG
                 docker tag backend:latest  $ECR_REGISTRY/backend:$IMAGE_TAG
 
@@ -57,14 +61,26 @@ pipeline {
             }
         }
 
-        stage('Deploy to EKS') {
+        stage('Deploy to EKS (Rolling Update)') {
             steps {
                 sh '''
-                kubectl apply -f terraform/eks/k8s-manifests/mongo
-                kubectl apply -f terraform/eks/k8s-manifests/backend
-                kubectl apply -f terraform/eks/k8s-manifests/frontend
+                echo "♻️ Restarting Kubernetes deployments..."
+                kubectl rollout restart deployment/frontend -n $NAMESPACE
+                kubectl rollout restart deployment/backend  -n $NAMESPACE
+
+                kubectl rollout status deployment/frontend -n $NAMESPACE
+                kubectl rollout status deployment/backend  -n $NAMESPACE
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Jenkins CI/CD pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Jenkins pipeline failed. Check console output."
         }
     }
 }
