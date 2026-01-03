@@ -35,7 +35,7 @@ pipeline {
         stage('Login to AWS ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',
-                                  credentialsId: 'aws-jenkins']]) {
+                                  credentialsId: 'aws-jen-id']]) {
                     sh '''
                     echo "🔐 Logging in to AWS ECR..."
                     aws ecr get-login-password --region $AWS_REGION |
